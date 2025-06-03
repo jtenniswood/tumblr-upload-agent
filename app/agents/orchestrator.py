@@ -144,15 +144,32 @@ class UploadOrchestratorAgent(BaseAgent):
         if self.file_watcher:
             await self.file_watcher.scan_existing_files()
         
+        # Create semaphore to limit concurrent uploads
+        max_concurrent = self.config.orchestrator.max_concurrent_uploads
+        semaphore = asyncio.Semaphore(max_concurrent)
+        
+        self.logger.info("concurrent_upload_limit_set", max_concurrent=max_concurrent)
+        
         # Process file events as they come in
         if self.file_watcher:
             async for file_event in self.file_watcher.get_file_events():
                 try:
-                    await self.execute_task("process_upload_workflow", 
-                                          self._process_upload_workflow, 
-                                          file_event)
+                    # Process uploads concurrently instead of sequentially
+                    asyncio.create_task(
+                        self._process_upload_with_semaphore(semaphore, file_event)
+                    )
                 except Exception as e:
                     await self.handle_error(e, {"file_event": str(file_event)})
+    
+    async def _process_upload_with_semaphore(self, semaphore: asyncio.Semaphore, file_event: FileEvent):
+        """Process upload workflow with concurrency control"""
+        async with semaphore:
+            try:
+                await self.execute_task("process_upload_workflow", 
+                                      self._process_upload_workflow, 
+                                      file_event)
+            except Exception as e:
+                await self.handle_error(e, {"file_event": str(file_event)})
     
     async def _process_upload_workflow(self, file_event: FileEvent):
         """Process a complete upload workflow for a file"""
