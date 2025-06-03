@@ -1,0 +1,2 @@
+# This file ensures the failed directory is preserved in git
+# Images that fail to upload will be moved here for manual review 

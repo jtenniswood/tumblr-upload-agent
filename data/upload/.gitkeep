@@ -1,0 +1,6 @@
+# This file ensures the upload directory is preserved in git
+# Drop your images in subdirectories like:
+# - Gardens/
+# - Home/
+# - Photography/
+# - Technology/ 
