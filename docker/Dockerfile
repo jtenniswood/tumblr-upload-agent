@@ -61,18 +61,55 @@ COPY --chown=tumblr:tumblr app/ ./app/
 COPY --chown=tumblr:tumblr requirements.txt .
 
 # Create entrypoint script to handle permissions
-RUN cat > /entrypoint.sh << 'EOF'
+COPY <<EOF /entrypoint.sh
 #!/bin/bash
 set -e
 
-# Fix permissions for data directories
-echo "🔧 Fixing file permissions..."
-chown -R tumblr:tumblr /app/data/ 2>/dev/null || true
-chmod -R u+rwX /app/data/ 2>/dev/null || true
+echo "🔧 Setting up user and permissions..."
 
-# Switch to tumblr user and run the application
-echo "🚀 Starting Tumblr Upload Agent as user tumblr..."
-exec gosu tumblr "$@"
+# Get PUID and PGID from environment (default to 1000)
+PUID=\${PUID:-1000}
+PGID=\${PGID:-1000}
+
+echo "Target PUID: \$PUID"
+echo "Target PGID: \$PGID"
+
+# If running as root (PUID=0), skip user switching
+if [ "\$PUID" = "0" ]; then
+    echo "🚀 Running as root user..."
+    
+    # Ensure data directories exist and have proper permissions
+    mkdir -p /app/data/upload /app/data/failed
+    chmod -R 755 /app/data/
+    
+    # Run directly as root
+    exec "\$@"
+else
+    echo "🔧 Setting up non-root user (PUID=\$PUID, PGID=\$PGID)..."
+    
+    # Update the tumblr user/group to match PUID/PGID
+    groupmod -o -g "\$PGID" tumblr 2>/dev/null || echo "Group update skipped"
+    usermod -o -u "\$PUID" tumblr 2>/dev/null || echo "User update skipped"
+    
+    # Show current user and permissions for debugging
+    echo "Current user: \$(whoami)"
+    echo "Current UID: \$(id -u)"
+    echo "Data directory permissions before:"
+    ls -la /app/data/ || echo "Data directory doesn't exist yet"
+    
+    # Ensure data directories exist
+    mkdir -p /app/data/upload /app/data/failed
+    
+    # Fix ownership and permissions
+    chown -R "\$PUID:\$PGID" /app/data/ 2>/dev/null || echo "Warning: Could not change ownership"
+    chmod -R 755 /app/data/ 2>/dev/null || echo "Warning: Could not change permissions"
+    
+    echo "Data directory permissions after:"
+    ls -la /app/data/
+    
+    echo "🚀 Starting Tumblr Upload Agent as user tumblr (UID=\$PUID)..."
+    exec gosu tumblr "\$@"
+fi
 EOF
 
 RUN chmod +x /entrypoint.sh

@@ -10,14 +10,14 @@ import os
 load_dotenv()
 
 # Explicitly set the problematic environment variable if it exists in the .env file
-if not os.getenv('IMAGE_ANALYSIS_ENABLED'):
+if not os.getenv('ENABLE_IMAGE_ANALYSIS'):
     # Try to read it directly from .env file
     try:
         with open('.env', 'r') as f:
             for line in f:
-                if line.strip().startswith('IMAGE_ANALYSIS_ENABLED='):
+                if line.strip().startswith('ENABLE_IMAGE_ANALYSIS='):
                     value = line.split('=', 1)[1].strip()
-                    os.environ['IMAGE_ANALYSIS_ENABLED'] = value
+                    os.environ['ENABLE_IMAGE_ANALYSIS'] = value
                     break
     except:
         pass
@@ -68,7 +68,7 @@ class ImageAnalysisConfig(BaseSettings):
     def enable_analysis(self) -> bool:
         """Convert string to boolean by reading environment variable directly"""
         # Read directly from environment variable
-        value = os.getenv('IMAGE_ANALYSIS_ENABLED', 'false')
+        value = os.getenv('ENABLE_IMAGE_ANALYSIS', 'false')
         return value.lower() in ('true', '1', 'yes', 'on')
 
 

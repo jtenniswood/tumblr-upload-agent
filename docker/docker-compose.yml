@@ -4,6 +4,10 @@ services:
     container_name: tumblr-agent
     restart: unless-stopped
     environment:
+      # User/Group ID settings (set to 0 to run as root, or match your host user)
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+      
       # Load from .env file
       - CONSUMER_KEY=${CONSUMER_KEY}
       - CONSUMER_SECRET=${CONSUMER_SECRET}
