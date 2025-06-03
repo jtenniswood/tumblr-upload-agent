@@ -143,33 +143,34 @@ class UploadOrchestratorAgent(BaseAgent):
         # Scan for existing files first
         if self.file_watcher:
             await self.file_watcher.scan_existing_files()
-        
-        # Create semaphore to limit concurrent uploads
-        max_concurrent = self.config.orchestrator.max_concurrent_uploads
-        semaphore = asyncio.Semaphore(max_concurrent)
-        
-        self.logger.info("concurrent_upload_limit_set", max_concurrent=max_concurrent)
+            queue_size = self.file_watcher.get_queue_size()
+            self.logger.info("initial_scan_completed", files_found=queue_size)
         
         # Process file events as they come in
         if self.file_watcher:
+            files_processed = 0
             async for file_event in self.file_watcher.get_file_events():
                 try:
-                    # Process uploads concurrently instead of sequentially
-                    asyncio.create_task(
-                        self._process_upload_with_semaphore(semaphore, file_event)
-                    )
+                    files_processed += 1
+                    self.logger.info("processing_file", 
+                                   file_number=files_processed,
+                                   file_path=str(file_event.file_path),
+                                   category=file_event.category)
+                    
+                    await self.execute_task("process_upload_workflow", 
+                                          self._process_upload_workflow, 
+                                          file_event)
+                    
+                    self.logger.info("file_processing_completed",
+                                   file_number=files_processed,
+                                   file_path=str(file_event.file_path))
+                    
                 except Exception as e:
+                    self.logger.error("file_processing_error",
+                                    file_number=files_processed,
+                                    file_path=str(file_event.file_path),
+                                    error=str(e))
                     await self.handle_error(e, {"file_event": str(file_event)})
-    
-    async def _process_upload_with_semaphore(self, semaphore: asyncio.Semaphore, file_event: FileEvent):
-        """Process upload workflow with concurrency control"""
-        async with semaphore:
-            try:
-                await self.execute_task("process_upload_workflow", 
-                                      self._process_upload_workflow, 
-                                      file_event)
-            except Exception as e:
-                await self.handle_error(e, {"file_event": str(file_event)})
     
     async def _process_upload_workflow(self, file_event: FileEvent):
         """Process a complete upload workflow for a file"""
@@ -182,6 +183,12 @@ class UploadOrchestratorAgent(BaseAgent):
                            category=file_event.category)
             
             try:
+                # Step 0: Validate file exists and is fully written
+                if not await self._validate_file_ready(file_event):
+                    self.logger.warning("file_not_ready_skipping",
+                                      file_path=str(file_event.file_path))
+                    return
+                
                 # Step 1: Check rate limits
                 if not await self.rate_limiter.should_allow_upload():
                     self.logger.info("upload_rate_limited",
@@ -229,6 +236,46 @@ class UploadOrchestratorAgent(BaseAgent):
                 
             except Exception as e:
                 await self._handle_workflow_error(file_event, e)
+    
+    async def _validate_file_ready(self, file_event: FileEvent) -> bool:
+        """Validate that file exists and is fully written"""
+        # Validate file still exists and is readable
+        if not file_event.file_path.exists():
+            self.logger.warning("file_disappeared",
+                              file_path=str(file_event.file_path))
+            return False
+        
+        # Wait a moment for file to be fully written
+        await asyncio.sleep(0.5)
+        
+        # Check file size hasn't changed (indicating it's still being written)
+        try:
+            current_size = file_event.file_path.stat().st_size
+            if current_size != file_event.file_size:
+                # File is still being written, wait and check again
+                self.logger.info("file_still_being_written",
+                               file_path=str(file_event.file_path),
+                               old_size=file_event.file_size,
+                               new_size=current_size)
+                await asyncio.sleep(2.0)
+                
+                # Check one more time
+                final_size = file_event.file_path.stat().st_size
+                if final_size != current_size:
+                    self.logger.warning("file_still_changing_skipping",
+                                      file_path=str(file_event.file_path))
+                    return False
+                
+                # Update the file event with the final size
+                file_event.file_size = final_size
+                
+        except OSError as e:
+            self.logger.warning("file_stat_error",
+                              file_path=str(file_event.file_path),
+                              error=str(e))
+            return False
+        
+        return True
     
     async def _create_upload_request(self, file_event: FileEvent) -> UploadRequest:
         """Create an upload request from a file event"""

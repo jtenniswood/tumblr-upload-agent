@@ -79,8 +79,9 @@ class FileWatcherAgent(BaseAgent):
         await self._setup_directories()
         await self._start_observers()
         
-        # Start the event processing loop
-        asyncio.create_task(self._process_events())
+        # Note: We don't start _process_events() here anymore since the orchestrator
+        # will consume events directly via get_file_events()
+        self.logger.info("file_watcher_started", note="orchestrator_will_consume_events")
     
     async def _stop_work(self):
         """Stop watching directories"""
@@ -169,72 +170,6 @@ class FileWatcherAgent(BaseAgent):
                 
         except Exception as e:
             await self.handle_error(e, {"context": "queue_file_event"})
-    
-    async def _process_events(self):
-        """Process file events from the queue"""
-        while self.is_running:
-            try:
-                if not self.file_event_queue:
-                    await asyncio.sleep(1.0)
-                    continue
-                    
-                # Wait for file event with timeout
-                file_event = await asyncio.wait_for(
-                    self.file_event_queue.get(),
-                    timeout=1.0
-                )
-                
-                await self.execute_task("process_file_event", 
-                                       self._handle_file_event, 
-                                       file_event)
-                
-            except asyncio.TimeoutError:
-                # No events to process, continue
-                continue
-            except Exception as e:
-                await self.handle_error(e, {"context": "process_events"})
-                await asyncio.sleep(1.0)  # Brief pause on error
-    
-    async def _handle_file_event(self, file_event: FileEvent):
-        """Handle a single file event"""
-        async with trace_operation(self.agent_id, "handle_file_event",
-                                 metadata={"file_path": str(file_event.file_path),
-                                          "category": file_event.category}) as span_id:
-            
-            # Validate file still exists and is readable
-            if not file_event.file_path.exists():
-                self.logger.warning("file_disappeared",
-                                  file_path=str(file_event.file_path))
-                return
-            
-            # Wait a moment for file to be fully written
-            await asyncio.sleep(0.5)
-            
-            # Check file size hasn't changed (indicating it's still being written)
-            try:
-                current_size = file_event.file_path.stat().st_size
-                if current_size != file_event.file_size:
-                    # File is still being written, re-queue for later
-                    file_event.file_size = current_size
-                    await asyncio.sleep(2.0)
-                    await self._queue_file_event(file_event)
-                    return
-            except OSError as e:
-                self.logger.warning("file_stat_error",
-                                  file_path=str(file_event.file_path),
-                                  error=str(e))
-                return
-            
-            # Emit event for other agents to process
-            self.emit_event(EventType.FILE_DETECTED, {
-                "file_path": str(file_event.file_path),
-                "category": file_event.category,
-                "file_size": file_event.file_size
-            })
-            
-            self.logger.info("file_event_processed",
-                           file_path=str(file_event.file_path),
-                           category=file_event.category)
     
     async def get_file_events(self) -> AsyncGenerator[FileEvent, None]:
         """Get file events as they are detected"""
