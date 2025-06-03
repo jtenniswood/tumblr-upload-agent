@@ -51,7 +51,7 @@ class TumblrAPI:
         """Test API connection and credentials"""
         try:
             url = f"{self.api_base}/blog/{blog_name}/info"
-            response = requests.get(url, auth=self.auth)
+            response = requests.get(url, auth=self.auth, timeout=5.0)  # 5 second timeout
             return response.status_code == 200
         except Exception:
             return False

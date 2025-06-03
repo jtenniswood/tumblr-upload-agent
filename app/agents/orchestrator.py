@@ -332,15 +332,48 @@ class UploadOrchestratorAgent(BaseAgent):
         validation_results = {}
         
         try:
-            # Test Tumblr connection
+            # Test Tumblr connection with timeout
+            self.logger.info("validation_step_starting", step="tumblr_connection")
             if self.tumblr_publisher:
-                validation_results["tumblr_connection"] = await self.tumblr_publisher.test_connection()
+                try:
+                    validation_results["tumblr_connection"] = await asyncio.wait_for(
+                        self.tumblr_publisher.test_connection(), 
+                        timeout=10.0
+                    )
+                    self.logger.info("validation_step_completed", 
+                                   step="tumblr_connection", 
+                                   result=validation_results["tumblr_connection"])
+                except asyncio.TimeoutError:
+                    self.logger.warning("validation_step_timeout", step="tumblr_connection")
+                    validation_results["tumblr_connection"] = False
+                except Exception as e:
+                    self.logger.error("validation_step_error", step="tumblr_connection", error=str(e))
+                    validation_results["tumblr_connection"] = False
+            else:
+                validation_results["tumblr_connection"] = False
             
-            # Test image analysis
+            # Test image analysis with timeout
+            self.logger.info("validation_step_starting", step="image_analysis")
             if self.image_analyzer:
-                validation_results["image_analysis"] = await self.image_analyzer.test_analysis()
+                try:
+                    validation_results["image_analysis"] = await asyncio.wait_for(
+                        self.image_analyzer.test_analysis(), 
+                        timeout=10.0
+                    )
+                    self.logger.info("validation_step_completed", 
+                                   step="image_analysis", 
+                                   result=validation_results["image_analysis"])
+                except asyncio.TimeoutError:
+                    self.logger.warning("validation_step_timeout", step="image_analysis")
+                    validation_results["image_analysis"] = False
+                except Exception as e:
+                    self.logger.error("validation_step_error", step="image_analysis", error=str(e))
+                    validation_results["image_analysis"] = False
+            else:
+                validation_results["image_analysis"] = False
             
             # Test metrics system
+            self.logger.info("validation_step_starting", step="metrics_working")
             validation_results["metrics_working"] = True
             try:
                 if self.metrics:
@@ -348,13 +381,21 @@ class UploadOrchestratorAgent(BaseAgent):
                     self.metrics.record_agent_error("test_agent", "test_error")
                     system_metrics = self.metrics.get_system_metrics()
                     validation_results["metrics_working"] = isinstance(system_metrics, dict)
+                    self.logger.info("validation_step_completed", 
+                                   step="metrics_working", 
+                                   result=validation_results["metrics_working"])
                 else:
                     validation_results["metrics_working"] = False
+                    self.logger.info("validation_step_completed", 
+                                   step="metrics_working", 
+                                   result=False, 
+                                   reason="no_metrics_instance")
             except Exception as e:
                 self.logger.error("metrics_validation_error", error=str(e))
                 validation_results["metrics_working"] = False
             
             # Check directory access and initialize directories
+            self.logger.info("validation_step_starting", step="directories_accessible")
             validation_results["directories_accessible"] = True
             try:
                 # Initialize directories and get discovered categories
@@ -370,7 +411,12 @@ class UploadOrchestratorAgent(BaseAgent):
                     if not category_path.exists():
                         validation_results["directories_accessible"] = False
                         break
-            except Exception:
+                        
+                self.logger.info("validation_step_completed", 
+                               step="directories_accessible", 
+                               result=validation_results["directories_accessible"])
+            except Exception as e:
+                self.logger.error("validation_step_error", step="directories_accessible", error=str(e))
                 validation_results["directories_accessible"] = False
             
             self.logger.info("system_validation_completed", results=validation_results)
