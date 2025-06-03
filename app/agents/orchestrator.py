@@ -340,6 +340,20 @@ class UploadOrchestratorAgent(BaseAgent):
             if self.image_analyzer:
                 validation_results["image_analysis"] = await self.image_analyzer.test_analysis()
             
+            # Test metrics system
+            validation_results["metrics_working"] = True
+            try:
+                if self.metrics:
+                    # Test metrics by recording a test metric and retrieving system metrics
+                    self.metrics.record_agent_error("test_agent", "test_error")
+                    system_metrics = self.metrics.get_system_metrics()
+                    validation_results["metrics_working"] = isinstance(system_metrics, dict)
+                else:
+                    validation_results["metrics_working"] = False
+            except Exception as e:
+                self.logger.error("metrics_validation_error", error=str(e))
+                validation_results["metrics_working"] = False
+            
             # Check directory access and initialize directories
             validation_results["directories_accessible"] = True
             try:

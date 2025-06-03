@@ -37,7 +37,8 @@ class BaseAgent(BaseModel, ABC):
     
     def _setup_monitoring(self):
         """Setup monitoring components - override in subclasses if needed"""
-        pass
+        from app.monitoring.metrics import get_metrics_collector
+        self.metrics = get_metrics_collector()
     
     async def start(self):
         """Start the agent"""
