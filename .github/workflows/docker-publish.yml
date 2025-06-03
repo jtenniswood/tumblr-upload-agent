@@ -41,14 +41,6 @@ jobs:
         id: repo
         run: echo "repository=${GITHUB_REPOSITORY,,}" >> $GITHUB_OUTPUT
 
-      - name: Debug info
-        run: |
-          echo "Event name: ${{ github.event_name }}"
-          echo "Ref: ${{ github.ref }}"
-          echo "Repository: ${{ github.repository }}"
-          echo "Repository (lowercase): ${{ steps.repo.outputs.repository }}"
-          echo "Will push: ${{ github.event_name != 'pull_request' }}"
-
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5
@@ -62,13 +54,6 @@ jobs:
             type=semver,pattern={{major}}
             type=sha,prefix={{branch}}-
             type=raw,value=latest,enable={{is_default_branch}}
-
-      - name: Debug metadata
-        run: |
-          echo "Generated tags:"
-          echo "${{ steps.meta.outputs.tags }}"
-          echo "Generated labels:"
-          echo "${{ steps.meta.outputs.labels }}"
 
       - name: Build and push Docker image
         id: build
