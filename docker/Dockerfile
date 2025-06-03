@@ -41,30 +41,45 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 # Install runtime dependencies (this layer rarely changes)
 RUN apt-get update && apt-get install -y \
     procps \
+    gosu \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
-# Create non-root user (this layer rarely changes)
-RUN groupadd -r tumblr && useradd -r -g tumblr tumblr
+# Create non-root user with UID 1000 (common host user UID)
+RUN groupadd -g 1000 tumblr && useradd -r -u 1000 -g tumblr tumblr
 
 # Copy virtual environment from builder (only rebuilds if deps change)
 COPY --from=builder /opt/venv /opt/venv
 
 # Create application directory and data dirs (rarely changes)
 WORKDIR /app
-RUN mkdir -p /app/data/upload /app/data/failed && \
-    chown -R tumblr:tumblr /app
+RUN mkdir -p /app/data/upload /app/data/failed
 
 # Copy only the application code (this changes most frequently)
 # This way, code changes don't invalidate the expensive dependency layers above
 COPY --chown=tumblr:tumblr app/ ./app/
 COPY --chown=tumblr:tumblr requirements.txt .
 
-# Switch to non-root user
-USER tumblr
+# Create entrypoint script to handle permissions
+RUN cat > /entrypoint.sh << 'EOF'
+#!/bin/bash
+set -e
+
+# Fix permissions for data directories
+echo "🔧 Fixing file permissions..."
+chown -R tumblr:tumblr /app/data/ 2>/dev/null || true
+chmod -R u+rwX /app/data/ 2>/dev/null || true
+
+# Switch to tumblr user and run the application
+echo "🚀 Starting Tumblr Upload Agent as user tumblr..."
+exec gosu tumblr "$@"
+EOF
+
+RUN chmod +x /entrypoint.sh
 
 # Health check using process monitoring instead of HTTP
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD ps aux | grep -v grep | grep -q "python.*main.py" || exit 1
 
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["python", "-m", "app.main"] 
