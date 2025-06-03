@@ -56,29 +56,23 @@ jobs:
             type=sha,prefix={{branch}}-
             type=raw,value=latest,enable={{is_default_branch}}
 
-      - name: Build Docker image
+      - name: Build and push Docker image
+        id: build
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./docker/Dockerfile
           platforms: linux/amd64,linux/arm64
-          push: false
+          push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          outputs: type=docker,dest=/tmp/image.tar
 
-      - name: Load and push image
+      - name: Generate artifact attestation
         if: ${{ github.event_name != 'pull_request' }}
-        run: |
-          docker load -i /tmp/image.tar
-          docker images
-          
-          # Push each tag individually to handle potential issues
-          echo "${{ steps.meta.outputs.tags }}" | while read -r tag; do
-            if [ -n "$tag" ]; then
-              echo "Pushing $tag"
-              docker push "$tag" || echo "Failed to push $tag, continuing..."
-            fi
-          done 
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ steps.repo.outputs.repository }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true 
