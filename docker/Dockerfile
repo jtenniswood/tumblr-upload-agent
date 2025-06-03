@@ -35,7 +35,8 @@ FROM python:3.11-slim as production
 # Set environment variables (rarely changes)
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PATH="/opt/venv/bin:$PATH"
+    PATH="/opt/venv/bin:$PATH" \
+    PYTHONPATH="/app"
 
 # Install runtime dependencies (this layer rarely changes)
 RUN apt-get update && apt-get install -y \
@@ -66,4 +67,4 @@ USER tumblr
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD ps aux | grep -v grep | grep -q "python.*main.py" || exit 1
 
-CMD ["python", "app/main.py"] 
+CMD ["python", "-m", "app.main"] 

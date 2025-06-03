@@ -1,6 +1,6 @@
 services:
-  tumblr-agent:
-    build: ..
+  tumblr:
+    image: ghcr.io/jtenniswood/tumblr-agent:latest
     container_name: tumblr-agent
     restart: unless-stopped
     environment:
