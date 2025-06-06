@@ -4,11 +4,27 @@ A sophisticated multi-agent system for automatically uploading images to Tumblr 
 
 ## 🌟 Features
 
-- **Multi-Agent Architecture**: File watcher, image analysis, Tumblr publisher, file manager, rate limiter, and orchestrator agents
+- **Multi-Agent Architecture**: File watcher, image analysis, image conversion, Tumblr publisher, file manager, rate limiter, and orchestrator agents
 - **AI Image Analysis**: Automatic image description generation using Google Gemini AI
+- **Smart Image Conversion**: Automatic conversion of AVIF, BMP, and TIFF files to JPG for Tumblr compatibility
 - **Smart Rate Limiting**: Hourly, daily, and burst limits with automatic retry
 - **Distributed Tracing**: Track requests across agents with structured logging
 - **File Organization**: Automatic categorization and cleanup
+
+## 📸 Supported Image Formats
+
+### Native Tumblr Support
+- **JPG/JPEG** - Uploaded directly
+- **PNG** - Uploaded directly  
+- **GIF** - Uploaded directly
+- **WebP** - Uploaded directly
+
+### Auto-Converted Formats
+- **AVIF** - Converted to high-quality JPG
+- **BMP** - Converted to high-quality JPG
+- **TIFF/TIF** - Converted to high-quality JPG
+
+The system automatically detects unsupported formats and converts them to JPG with configurable quality settings (default: 95%). Original files can optionally be preserved after conversion.
 
 ## 🐳 Docker Usage
 

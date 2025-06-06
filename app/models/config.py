@@ -79,7 +79,7 @@ class FileWatcherConfig(BaseSettings):
     base_upload_folder: Path = Field(Path("./data/upload"), env="BASE_UPLOAD_FOLDER")
     categories: Optional[Union[List[str], str]] = Field(None, env="CATEGORIES")
     polling_interval: float = Field(1.0, env="POLLING_INTERVAL")
-    file_extensions: Union[List[str], str] = Field([".jpg", ".jpeg", ".png", ".gif"], env="FILE_EXTENSIONS")
+    file_extensions: Union[List[str], str] = Field([".jpg", ".jpeg", ".png", ".gif", ".avif", ".webp", ".bmp", ".tiff", ".tif"], env="FILE_EXTENSIONS")
     auto_discover_categories: bool = Field(True, env="AUTO_DISCOVER_CATEGORIES")
 
     @field_validator('categories', mode='before')
@@ -134,6 +134,23 @@ class FileWatcherConfig(BaseSettings):
         return categories
 
 
+class ImageConversionConfig(BaseSettings):
+    """Image conversion configuration"""
+    model_config = SettingsConfigDict(extra="ignore")
+    
+    enable_conversion: bool = Field(True, env="ENABLE_IMAGE_CONVERSION")
+    conversion_quality: int = Field(95, env="CONVERSION_QUALITY")
+    keep_original: bool = Field(False, env="KEEP_ORIGINAL_AFTER_CONVERSION")
+    convert_formats: Union[List[str], str] = Field([".avif", ".bmp", ".tiff", ".tif"], env="CONVERT_FORMATS")
+
+    @field_validator('convert_formats', mode='before')
+    @classmethod
+    def parse_convert_formats(cls, v):
+        if isinstance(v, str):
+            return [fmt.strip() for fmt in v.split(",") if fmt.strip()]
+        return v
+
+
 class FileManagementConfig(BaseSettings):
     """File management configuration"""
     model_config = SettingsConfigDict(extra="ignore")
@@ -179,6 +196,7 @@ class SystemConfig:
     def __init__(self):
         self.tumblr = TumblrConfig()
         self.image_analysis = ImageAnalysisConfig()
+        self.image_conversion = ImageConversionConfig()
         self.file_watcher = FileWatcherConfig()
         self.file_management = FileManagementConfig()
         self.rate_limit = RateLimitConfig()

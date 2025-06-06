@@ -7,6 +7,7 @@ from pydantic import Field
 from app.agents.base import BaseAgent
 from app.agents.file_watcher import FileWatcherAgent
 from app.agents.image_analysis import ImageAnalysisAgent
+from app.agents.image_converter import ImageConversionAgent
 from app.agents.tumblr_publisher import TumblrPublishingAgent
 from app.agents.file_manager import FileManagementAgent
 from app.agents.rate_limiter import RateLimitingAgent
@@ -23,6 +24,7 @@ class UploadOrchestratorAgent(BaseAgent):
     config: SystemConfig = Field(...)
     file_watcher: Optional[FileWatcherAgent] = None
     image_analyzer: Optional[ImageAnalysisAgent] = None
+    image_converter: Optional[ImageConversionAgent] = None
     tumblr_publisher: Optional[TumblrPublishingAgent] = None
     file_manager: Optional[FileManagementAgent] = None
     rate_limiter: Optional[RateLimitingAgent] = None
@@ -49,6 +51,12 @@ class UploadOrchestratorAgent(BaseAgent):
             self.image_analyzer = ImageAnalysisAgent(
                 config=self.config.image_analysis,
                 agent_id=f"{self.agent_id}_image_analyzer"
+            )
+            
+            # Image conversion agent
+            self.image_converter = ImageConversionAgent(
+                config=self.config.image_conversion,
+                agent_id=f"{self.agent_id}_image_converter"
             )
             
             # Tumblr publisher agent
@@ -100,6 +108,7 @@ class UploadOrchestratorAgent(BaseAgent):
         agents = [
             self.file_watcher,
             self.image_analyzer,
+            self.image_converter,
             self.tumblr_publisher,
             self.file_manager,
             self.rate_limiter
@@ -122,6 +131,7 @@ class UploadOrchestratorAgent(BaseAgent):
             self.rate_limiter,
             self.file_manager,
             self.tumblr_publisher,
+            self.image_converter,
             self.image_analyzer,
             self.file_watcher
         ]
@@ -183,13 +193,27 @@ class UploadOrchestratorAgent(BaseAgent):
                            category=file_event.category)
             
             try:
+                original_file_path = file_event.file_path
+                converted_file_path = None
+                
                 # Step 0: Validate file exists and is fully written
                 if not await self._validate_file_ready(file_event):
                     self.logger.warning("file_not_ready_skipping",
                                       file_path=str(file_event.file_path))
                     return
                 
-                # Step 1: Check rate limits
+                # Step 1: Convert image if needed
+                if self.image_converter and self.image_converter.is_conversion_enabled():
+                    converted_file_path = await self.image_converter.convert_if_needed(original_file_path)
+                    
+                    if converted_file_path:
+                        # Use converted file for upload
+                        file_event.file_path = converted_file_path
+                        self.logger.info("image_converted",
+                                       original=str(original_file_path),
+                                       converted=str(converted_file_path))
+                
+                # Step 2: Check rate limits
                 if not await self.rate_limiter.should_allow_upload():
                     self.logger.info("upload_rate_limited",
                                    file_path=str(file_event.file_path))
@@ -199,10 +223,10 @@ class UploadOrchestratorAgent(BaseAgent):
                     self.logger.info("rate_limit_wait_completed",
                                    wait_time=wait_time)
                 
-                # Step 2: Create upload request
+                # Step 3: Create upload request
                 upload_request = await self._create_upload_request(file_event)
                 
-                # Step 3: Analyze image if enabled
+                # Step 4: Analyze image if enabled
                 if self.image_analyzer.is_analysis_enabled():
                     analysis = await self.image_analyzer.analyze_image(file_event.file_path)
                     
@@ -217,17 +241,17 @@ class UploadOrchestratorAgent(BaseAgent):
                                           file_path=str(file_event.file_path),
                                           error=analysis.error)
                 
-                # Step 4: Upload to Tumblr
+                # Step 5: Upload to Tumblr
                 upload_result = await self.tumblr_publisher.publish_post(upload_request)
                 
-                # Step 5: Record upload in rate limiter
+                # Step 6: Record upload in rate limiter
                 await self.rate_limiter.record_upload()
                 
-                # Step 6: Handle result
+                # Step 7: Handle result
                 if upload_result.success:
-                    await self._handle_successful_upload(file_event, upload_result)
+                    await self._handle_successful_upload(file_event, upload_result, original_file_path, converted_file_path)
                 else:
-                    await self._handle_failed_upload(file_event, upload_result)
+                    await self._handle_failed_upload(file_event, upload_result, original_file_path, converted_file_path)
                 
                 self.logger.info("workflow_completed",
                                file_path=str(file_event.file_path),
@@ -296,9 +320,9 @@ class UploadOrchestratorAgent(BaseAgent):
             trace_id=file_event.trace_id
         )
     
-    async def _handle_successful_upload(self, file_event: FileEvent, upload_result):
+    async def _handle_successful_upload(self, file_event: FileEvent, upload_result, original_file_path: Path, converted_file_path: Optional[Path]):
         """Handle successful upload"""
-        # Clean up the file
+        # Clean up the uploaded file (converted or original)
         cleanup_success = await self.file_manager.cleanup_successful(file_event.file_path)
         
         if not cleanup_success:
@@ -306,33 +330,63 @@ class UploadOrchestratorAgent(BaseAgent):
                               file_path=str(file_event.file_path),
                               post_id=upload_result.post_id)
         
+        # Clean up original file if conversion occurred and keep_original is False
+        if (converted_file_path and 
+            converted_file_path != original_file_path and
+            not self.config.image_conversion.keep_original and
+            original_file_path.exists()):
+            try:
+                original_file_path.unlink()
+                self.logger.info("original_file_cleaned_up",
+                               original_file=str(original_file_path),
+                               converted_file=str(converted_file_path))
+            except Exception as e:
+                self.logger.warning("original_file_cleanup_failed",
+                                  original_file=str(original_file_path),
+                                  error=str(e))
+        
         # Emit success event
         self.emit_event(EventType.UPLOAD_COMPLETED, {
-            "file_path": str(file_event.file_path),
+            "file_path": str(original_file_path),  # Use original path for event
             "category": file_event.category,
             "post_id": upload_result.post_id,
-            "upload_time": upload_result.upload_time
+            "upload_time": upload_result.upload_time,
+            "was_converted": converted_file_path is not None
         })
     
-    async def _handle_failed_upload(self, file_event: FileEvent, upload_result):
+    async def _handle_failed_upload(self, file_event: FileEvent, upload_result, original_file_path: Path, converted_file_path: Optional[Path]):
         """Handle failed upload"""
-        # Move file to failed directory
+        # Move original file to failed directory (not the converted one)
         move_success = await self.file_manager.move_to_failed(
-            file_event.file_path,
+            original_file_path,
             file_event.category,
             upload_result.error_message or "Unknown error"
         )
         
         if not move_success:
             self.logger.error("failed_to_move_failed_file",
-                            file_path=str(file_event.file_path))
+                            file_path=str(original_file_path))
+        
+        # Clean up converted file if it exists and is different from original
+        if (converted_file_path and 
+            converted_file_path != original_file_path and
+            converted_file_path.exists()):
+            try:
+                converted_file_path.unlink()
+                self.logger.info("converted_file_cleaned_up_after_failure",
+                               converted_file=str(converted_file_path))
+            except Exception as e:
+                self.logger.warning("converted_file_cleanup_failed",
+                                  converted_file=str(converted_file_path),
+                                  error=str(e))
         
         # Emit failure event
         self.emit_event(EventType.UPLOAD_FAILED, {
-            "file_path": str(file_event.file_path),
+            "file_path": str(original_file_path),  # Use original path for event
             "category": file_event.category,
             "error_message": upload_result.error_message,
-            "error_type": upload_result.error_type
+            "error_type": upload_result.error_type,
+            "was_converted": converted_file_path is not None
         })
     
     async def _handle_workflow_error(self, file_event: FileEvent, error: Exception):
@@ -364,6 +418,7 @@ class UploadOrchestratorAgent(BaseAgent):
             agents = {
                 "file_watcher": self.file_watcher,
                 "image_analyzer": self.image_analyzer,
+                "image_converter": self.image_converter,
                 "tumblr_publisher": self.tumblr_publisher,
                 "file_manager": self.file_manager,
                 "rate_limiter": self.rate_limiter

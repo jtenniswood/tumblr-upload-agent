@@ -37,6 +37,10 @@ class MetricsCollector:
         # Image analysis metrics
         self.analysis_times = deque(maxlen=100)  # Keep last 100 analysis times
         
+        # Image conversion metrics
+        self.conversion_times = deque(maxlen=100)  # Keep last 100 conversion times
+        self.conversions_performed = defaultdict(int)  # Track conversions by format
+        
         # Error tracking
         self.agent_errors = defaultdict(lambda: defaultdict(int))
         
@@ -79,6 +83,16 @@ class MetricsCollector:
             
         self.logger.debug("image_analysis_completed", 
                          analysis_time=analysis_time)
+    
+    def record_image_conversion(self, conversion_time: float, from_format: str = "unknown"):
+        """Record image conversion timing and format"""
+        with self._lock:
+            self.conversion_times.append(conversion_time)
+            self.conversions_performed[from_format] += 1
+            
+        self.logger.debug("image_conversion_completed", 
+                         conversion_time=conversion_time,
+                         from_format=from_format)
     
     def record_upload_attempt(self, category: str):
         """Record an upload attempt"""
@@ -178,6 +192,14 @@ class MetricsCollector:
             
             return sum(self.analysis_times) / len(self.analysis_times)
     
+    def get_average_conversion_time(self) -> float:
+        """Get average image conversion time"""
+        with self._lock:
+            if not self.conversion_times:
+                return 0.0
+            
+            return sum(self.conversion_times) / len(self.conversion_times)
+    
     def get_system_metrics(self) -> Dict[str, Any]:
         """Get comprehensive system metrics"""
         with self._lock:
@@ -194,6 +216,8 @@ class MetricsCollector:
                 'success_rate': self.get_success_rate(),
                 'average_upload_time': self.get_average_upload_time(),
                 'average_analysis_time': self.get_average_analysis_time(),
+                'average_conversion_time': self.get_average_conversion_time(),
+                'conversions_performed': dict(self.conversions_performed),
                 'rate_limits': self.get_upload_rate_limits()
             }
     
@@ -207,6 +231,8 @@ class MetricsCollector:
             self.upload_times.clear()
             self.files_detected.clear()
             self.analysis_times.clear()
+            self.conversion_times.clear()
+            self.conversions_performed.clear()
             self.agent_errors.clear()
             self.hourly_uploads.clear()
             self.daily_uploads.clear()
