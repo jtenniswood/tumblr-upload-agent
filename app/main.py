@@ -14,9 +14,6 @@ from .models.config import SystemConfig
 from .agents.orchestrator import UploadOrchestratorAgent
 from .monitoring.logger import configure_logging
 
-print(f"[DEBUG] sys.executable: {sys.executable}")
-print(f"[DEBUG] sys.path: {sys.path}")
-print(f"[DEBUG] PATH env: {os.environ.get('PATH')}")
 
 class TumblrUploadSystem:
     """Main system controller"""
