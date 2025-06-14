@@ -23,47 +23,42 @@ A sophisticated multi-agent system for automatically uploading images to Tumblr 
 - **AVIF** - Converted to high-quality JPG
 - **BMP** - Converted to high-quality JPG
 - **TIFF/TIF** - Converted to high-quality JPG
+- **Other unsupported formats** - The agent will attempt to convert any unsupported image type to JPG automatically.
 
 The system automatically detects unsupported formats and converts them to JPG with configurable quality settings (default: 95%). Original files can optionally be preserved after conversion.
 
 ## 🐳 Docker Usage
 
-### Using Pre-built Images
+### Recommended Setup (Docker Compose)
 
-The application is automatically built and published to GitHub Container Registry. You can use the pre-built images:
+1. **Copy and configure environment variables:**
+   ```bash
+   cp docker/env.example .env
+   # Edit .env with your Tumblr and Gemini credentials and desired settings
+   ```
+2. **Start the system with Docker Compose:**
+   ```bash
+   docker compose -f docker/compose.yml up -d
+   ```
+   This is the preferred and easiest way to run the system.
+
+### Using Pre-built Images (Advanced)
+
+You can also run the container directly, but Docker Compose is recommended for managing environment variables and volumes:
 
 ```bash
 # Pull the latest image
 docker pull ghcr.io/jtenniswood/tumblr-agent:latest
 
-# Run with docker-compose (recommended)
-docker-compose -f docker/docker-compose.yml up -d
-
-# Or run directly
+# Run directly (not recommended for most users)
 docker run -d \
   --name tumblr-agent \
-  -v $(pwd)/data:/app/data \
-  -e TUMBLR_API_KEY=your_api_key \
-  -e TUMBLR_API_SECRET=your_api_secret \
-  -e TUMBLR_ACCESS_TOKEN=your_access_token \
-  -e TUMBLR_ACCESS_SECRET=your_access_secret \
-  -e GEMINI_API_KEY=your_gemini_key \
+  -v $(pwd)/upload:/app/data/upload \
+  -v $(pwd)/staging:/app/data/failed \
+  --env-file .env \
   ghcr.io/jtenniswood/tumblr-agent:latest
 ```
 
 ### Available Tags
 
-- `latest` - Latest stable release from main branch
-- `develop` - Latest development build
-- `v*` - Specific version releases (e.g., `v1.0.0`)
-- `main-<sha>` - Specific commit from main branch
-
-### Building Locally
-
-```bash
-# Build the image
-docker build -f docker/Dockerfile -t tumblr-agent .
-
-# Run with docker-compose
-docker-compose -f docker/docker-compose.yml up -d
-```
+- `
