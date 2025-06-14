@@ -169,6 +169,16 @@ class RateLimitConfig(BaseSettings):
     burst_limit: int = Field(5, env="BURST_LIMIT")
 
 
+class QueueManagerConfig(BaseSettings):
+    """Queue management configuration"""
+    model_config = SettingsConfigDict(extra="ignore")
+    
+    target_queue_size: int = Field(1000, env="TARGET_QUEUE_SIZE")
+    min_queue_threshold: int = Field(800, env="MIN_QUEUE_THRESHOLD")
+    check_interval: float = Field(60.0, env="QUEUE_CHECK_INTERVAL")
+    staging_dir: Path = Field(Path("./data/staging"), env="STAGING_DIR")
+
+
 class MonitoringConfig(BaseSettings):
     """Monitoring configuration"""
     model_config = SettingsConfigDict(extra="ignore")
@@ -200,6 +210,7 @@ class SystemConfig:
         self.file_watcher = FileWatcherConfig()
         self.file_management = FileManagementConfig()
         self.rate_limit = RateLimitConfig()
+        self.queue_manager = QueueManagerConfig()
         self.monitoring = MonitoringConfig()
         self.orchestrator = OrchestratorConfig()
 
