@@ -4,71 +4,64 @@ services:
     container_name: tumblr-agent
     restart: unless-stopped
     environment:
-      # User/Group ID settings (set to 0 to run as root, or match your host user)
-      - PUID=${PUID:-1000}
-      - PGID=${PGID:-1000}
-      
-      # Load from .env file
+      - PUID=0
+      - PGID=0
+      # Tumblr Settings
       - CONSUMER_KEY=${CONSUMER_KEY}
       - CONSUMER_SECRET=${CONSUMER_SECRET}
       - OAUTH_TOKEN=${OAUTH_TOKEN}
       - OAUTH_SECRET=${OAUTH_SECRET}
       - BLOG_NAME=${BLOG_NAME}
       - POST_STATE=${POST_STATE}
-      
       # File watching
       - BASE_UPLOAD_FOLDER=/app/data/upload
       - AUTO_DISCOVER_CATEGORIES=${AUTO_DISCOVER_CATEGORIES}
       - CATEGORIES=${CATEGORIES}
       - FILE_EXTENSIONS=${FILE_EXTENSIONS}
       - POLLING_INTERVAL=${POLLING_INTERVAL}
-      
       # Image analysis
       - ENABLE_IMAGE_ANALYSIS=${ENABLE_IMAGE_ANALYSIS}
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - GEMINI_MODEL=${GEMINI_MODEL}
       - GEMINI_PROMPT=${GEMINI_PROMPT}
       - DESCRIPTION_APPEND_TEXT=${DESCRIPTION_APPEND_TEXT}
-      
-      # Image conversion
-      - ENABLE_IMAGE_CONVERSION=${ENABLE_IMAGE_CONVERSION}
-      - CONVERSION_QUALITY=${CONVERSION_QUALITY}
-      - KEEP_ORIGINAL_AFTER_CONVERSION=${KEEP_ORIGINAL_AFTER_CONVERSION}
-      - CONVERT_FORMATS=${CONVERT_FORMATS}
-      
       # Rate limiting
       - UPLOAD_DELAY=${UPLOAD_DELAY}
       - MAX_UPLOADS_PER_HOUR=${MAX_UPLOADS_PER_HOUR}
       - MAX_UPLOADS_PER_DAY=${MAX_UPLOADS_PER_DAY}
       - BURST_LIMIT=${BURST_LIMIT}
-      
       # Monitoring
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - HUMAN_READABLE_LOGS=${HUMAN_READABLE_LOGS:-true}
       - HEALTH_CHECK_INTERVAL=${HEALTH_CHECK_INTERVAL:-30.0}
-      
       # Orchestrator
       - MAX_CONCURRENT_UPLOADS=${MAX_CONCURRENT_UPLOADS}
       - RETRY_ATTEMPTS=${RETRY_ATTEMPTS}
       - RETRY_DELAY=${RETRY_DELAY}
       - AGENT_ID=${AGENT_ID}
-    
     volumes:
-      # Persistent data directories
-      - ./data/upload:/app/data/upload
-      - ./data/failed:/app/data/failed
-    
+      - type: bind
+        source: /DATA/Share/Upload
+        target: /app/data/upload
+      - type: bind
+        source: /DATA/Share/Staging
+        target: /app/data/failed
     networks:
       - tumblr-network
-    
-    # Health check using process monitoring
     healthcheck:
-      test: ["CMD", "ps", "aux"]
+      test:
+        - CMD
+        - ps
+        - aux
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
-
 networks:
   tumblr-network:
-    driver: bridge 
+    driver: bridge
+x-casaos:
+  hostname: ${CASAHOST}
+  title:
+    en_us: ${CASATITLE}
+  icon: ${CASAICON}
