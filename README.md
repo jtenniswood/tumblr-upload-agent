@@ -27,9 +27,43 @@ A sophisticated multi-agent system for automatically uploading images to Tumblr 
 
 The system automatically detects unsupported formats and converts them to JPG with configurable quality settings (default: 95%). Original files can optionally be preserved after conversion.
 
-## 🐳 Docker Usage
+## 🔑 Getting Started: Tumblr OAuth Setup
 
-### Recommended Setup (Docker Compose)
+Before running the system, you need to obtain OAuth credentials from Tumblr to enable API access.
+
+### Step 1: Create a Tumblr Application
+
+1. **Go to the Tumblr OAuth Apps page:** https://www.tumblr.com/oauth/apps
+2. **Login** to your Tumblr account
+3. **Click** "Register application"
+4. **Fill out the form:**
+   - **Application name:** `Tumblr Upload Agent` (or any name you prefer)
+   - **Application website:** `http://localhost:8080`
+   - **Default callback URL:** `http://localhost:8080/oauth/callback` ⚠️ **Must be exact**
+   - **Email:** Your email address
+5. **Save** your **Consumer Key** and **Consumer Secret** - you'll need these in the next step
+
+### Step 2: Generate OAuth Tokens
+
+Use the [Tumblr OAuth Token Generator](https://github.com/jtenniswood/tumblr-oauth) to easily obtain your OAuth tokens:
+
+1. **Run the OAuth token generator:**
+   ```bash
+   docker run -p 8080:5000 ghcr.io/jtenniswood/tumblr-oauth:latest
+   ```
+
+2. **Open** http://localhost:8080 in your browser
+
+3. **Enter** your Consumer Key and Consumer Secret from Step 1
+
+4. **Click** "Generate OAuth Tokens"
+
+5. **Authorize** on Tumblr's website (opens automatically)
+
+6. **Copy** your **OAuth Token** and **OAuth Token Secret**
+
+
+## 🐳 Setting up using Docker Compose
 
 1. **Copy and configure environment variables:**
    ```bash
@@ -42,23 +76,3 @@ The system automatically detects unsupported formats and converts them to JPG wi
    ```
    This is the preferred and easiest way to run the system.
 
-### Using Pre-built Images (Advanced)
-
-You can also run the container directly, but Docker Compose is recommended for managing environment variables and volumes:
-
-```bash
-# Pull the latest image
-docker pull ghcr.io/jtenniswood/tumblr-upload-agent:latest
-
-# Run directly (not recommended for most users)
-docker run -d \
-  --name tumblr-upload-agent \
-  -v $(pwd)/upload:/app/data/upload \
-  -v $(pwd)/staging:/app/data/failed \
-  --env-file .env \
-  ghcr.io/jtenniswood/tumblr-upload-agent:latest
-```
-
-### Available Tags
-
-- `
