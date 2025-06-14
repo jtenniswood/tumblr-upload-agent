@@ -17,6 +17,8 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     gcc \
     libavif-dev \
+    libjpeg-dev \
+    libimagequant-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Create virtual environment (this layer rarely changes)
@@ -44,6 +46,8 @@ RUN apt-get update && apt-get install -y \
     procps \
     gosu \
     libavif-dev \
+    libjpeg-dev \
+    libimagequant-dev \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 

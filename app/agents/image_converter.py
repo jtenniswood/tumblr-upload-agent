@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Optional, Dict, Any, ClassVar, Set
 from PIL import Image
 from pydantic import Field
+import pillow_avif_plugin  # Ensure AVIF support is registered
 
 from app.agents.base import BaseAgent
 from app.models.config import ImageConversionConfig
