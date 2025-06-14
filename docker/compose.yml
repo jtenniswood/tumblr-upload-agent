@@ -41,10 +41,10 @@ services:
       - AGENT_ID=${AGENT_ID}
     volumes:
       - type: bind
-        source: /DATA/Share/Upload
+        source: ./upload
         target: /app/data/upload
       - type: bind
-        source: /DATA/Share/Staging
+        source: ./staging
         target: /app/data/failed
     networks:
       - tumblr-network
@@ -60,8 +60,3 @@ services:
 networks:
   tumblr-network:
     driver: bridge
-x-casaos:
-  hostname: ${CASAHOST}
-  title:
-    en_us: ${CASATITLE}
-  icon: ${CASAICON}
