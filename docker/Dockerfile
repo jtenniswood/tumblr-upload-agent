@@ -1,5 +1,5 @@
 # Multi-stage build for Tumblr Upload Agent System
-FROM python:3.11-slim as builder
+FROM python:3.11-alpine as builder
 
 # Add container labels for GitHub Container Registry
 LABEL org.opencontainers.image.source="https://github.com/jtenniswood/tumblr-agent"
@@ -13,27 +13,36 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
 # Install system dependencies for building (this layer rarely changes)
-RUN apt-get update && apt-get install -y \
-    build-essential \
+RUN apk add --no-cache --virtual .build-deps \
+    build-base \
     gcc \
+    musl-dev \
+    libffi-dev \
+    jpeg-dev \
     libavif-dev \
-    libjpeg-dev \
-    libimagequant-dev \
-    && rm -rf /var/lib/apt/lists/*
+    && apk add --no-cache \
+    jpeg \
+    libavif
 
 # Create virtual environment (this layer rarely changes)
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 # Copy requirements first (separate from code for better caching)
-COPY requirements.txt .
+COPY requirements-prod.txt .
 
 # Install Python dependencies (this layer only rebuilds when requirements.txt changes)
 RUN pip install --upgrade pip setuptools wheel && \
-    pip install -r requirements.txt
+    pip install -r requirements-prod.txt && \
+    find /opt/venv -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true && \
+    find /opt/venv -type f -name "*.pyc" -delete && \
+    find /opt/venv -name "*.dist-info" -exec rm -rf {} + 2>/dev/null || true
+
+# Clean up build dependencies
+RUN apk del .build-deps
 
 # Production stage
-FROM python:3.11-slim as production
+FROM python:3.11-alpine as production
 
 # Set environment variables (rarely changes)
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -42,17 +51,15 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONPATH="/app"
 
 # Install runtime dependencies (this layer rarely changes)
-RUN apt-get update && apt-get install -y \
-    procps \
-    gosu \
-    libavif-dev \
-    libjpeg-dev \
-    libimagequant-dev \
-    && rm -rf /var/lib/apt/lists/* \
-    && apt-get clean
+RUN apk add --no-cache \
+    bash \
+    su-exec \
+    jpeg \
+    libavif \
+    procps
 
 # Create non-root user with UID 1000 (common host user UID)
-RUN groupadd -g 1000 tumblr && useradd -r -u 1000 -g tumblr tumblr
+RUN addgroup -g 1000 tumblr && adduser -D -u 1000 -G tumblr tumblr
 
 # Copy virtual environment from builder (only rebuilds if deps change)
 COPY --from=builder /opt/venv /opt/venv
@@ -94,8 +101,10 @@ else
     echo "🔧 Setting up non-root user (PUID=\$PUID, PGID=\$PGID)..."
     
     # Update the tumblr user/group to match PUID/PGID
-    groupmod -o -g "\$PGID" tumblr 2>/dev/null || echo "Group update skipped"
-    usermod -o -u "\$PUID" tumblr 2>/dev/null || echo "User update skipped"
+    delgroup tumblr 2>/dev/null || true
+    deluser tumblr 2>/dev/null || true
+    addgroup -g "\$PGID" tumblr
+    adduser -D -u "\$PUID" -G tumblr tumblr
     
     # Show current user and permissions for debugging
     echo "Current user: \$(whoami)"
@@ -114,7 +123,7 @@ else
     ls -la /app/data/
     
     echo "🚀 Starting Tumblr Upload Agent as user tumblr (UID=\$PUID)..."
-    exec gosu tumblr "\$@"
+    exec su-exec tumblr "\$@"
 fi
 EOF
 

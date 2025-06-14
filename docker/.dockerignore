@@ -88,4 +88,46 @@ data/failed/*
 
 # Keep directory structure but ignore contents
 !data/upload/.gitkeep
-!data/failed/.gitkeep 
+!data/failed/.gitkeep
+
+# Additional exclusions to reduce build context
+*.pyc
+**/__pycache__/
+**/.pytest_cache/
+.coverage
+.mypy_cache/
+.ruff_cache/
+node_modules/
+.npm/
+.yarn/
+
+# Large files and media
+*.mp4
+*.avi
+*.mov
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.webp
+*.bmp
+*.tiff
+*.pdf
+
+# Backup and temporary files
+*.bak
+*.backup
+*.orig
+*.rej
+*.swp
+*.swo
+*~
+#*#
+.#*
+
+# OS and editor files
+.DS_Store
+.vscode/
+.idea/
+*.sublime-*
+.atom/ 
