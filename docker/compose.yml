@@ -1,7 +1,7 @@
 services:
   tumblr:
-    image: ghcr.io/jtenniswood/tumblr-agent:latest
-    container_name: tumblr-agent
+    image: ghcr.io/jtenniswood/tumblr-upload-agent:latest
+    container_name: tumblr-upload-agent
     restart: unless-stopped
     environment:
       - PUID=0

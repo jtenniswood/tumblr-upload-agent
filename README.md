@@ -48,15 +48,15 @@ You can also run the container directly, but Docker Compose is recommended for m
 
 ```bash
 # Pull the latest image
-docker pull ghcr.io/jtenniswood/tumblr-agent:latest
+docker pull ghcr.io/jtenniswood/tumblr-upload-agent:latest
 
 # Run directly (not recommended for most users)
 docker run -d \
-  --name tumblr-agent \
+  --name tumblr-upload-agent \
   -v $(pwd)/upload:/app/data/upload \
   -v $(pwd)/staging:/app/data/failed \
   --env-file .env \
-  ghcr.io/jtenniswood/tumblr-agent:latest
+  ghcr.io/jtenniswood/tumblr-upload-agent:latest
 ```
 
 ### Available Tags

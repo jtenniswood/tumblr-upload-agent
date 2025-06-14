@@ -2,7 +2,7 @@
 FROM python:3.11-alpine as builder
 
 # Add container labels for GitHub Container Registry
-LABEL org.opencontainers.image.source="https://github.com/jtenniswood/tumblr-agent"
+LABEL org.opencontainers.image.source="https://github.com/jtenniswood/tumblr-upload-agent"
 LABEL org.opencontainers.image.description="Multi-agent system for automatically uploading images to Tumblr with AI-powered descriptions"
 LABEL org.opencontainers.image.licenses="MIT"
 
