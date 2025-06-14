@@ -66,13 +66,15 @@ Use the [Tumblr OAuth Token Generator](https://github.com/jtenniswood/tumblr-oau
 ## 🐳 Setting up using Docker Compose
 
 1. **Copy and configure environment variables:**
+   Download compose.yml and env.example from the docker folder.
+   
    ```bash
    cp docker/env.example .env
    # Edit .env with your Tumblr and Gemini credentials and desired settings
    ```
 2. **Start the system with Docker Compose:**
    ```bash
-   docker compose -f docker/compose.yml up -d
+   docker compose up -d
    ```
    This is the preferred and easiest way to run the system.
 
