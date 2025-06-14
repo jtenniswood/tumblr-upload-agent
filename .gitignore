@@ -169,11 +169,6 @@ temp/
 metrics/
 loki_data/
 
-# Test artifacts
-test/
-test_images/
-test_uploads/
-
 # Development tools
 .black
 .isort.cfg
