@@ -1,4 +1,4 @@
-# Core Framework (minimal versions)
+# Core Framework
 pydantic==2.6.1
 pydantic-settings==2.1.0
 fastapi==0.109.2
@@ -18,7 +18,7 @@ google-generativeai==0.3.2
 Pillow==10.2.0
 pillow-avif-plugin==1.4.1
 
-# Monitoring and Logging (minimal)
+# Monitoring and Logging
 structlog==24.1.0
 psutil==5.9.8
 

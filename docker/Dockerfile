@@ -29,11 +29,11 @@ RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 # Copy requirements first (separate from code for better caching)
-COPY requirements-prod.txt .
+COPY requirements.txt .
 
 # Install Python dependencies (this layer only rebuilds when requirements.txt changes)
 RUN pip install --upgrade pip setuptools wheel && \
-    pip install -r requirements-prod.txt && \
+    pip install -r requirements.txt && \
     find /opt/venv -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true && \
     find /opt/venv -type f -name "*.pyc" -delete && \
     find /opt/venv -name "*.dist-info" -exec rm -rf {} + 2>/dev/null || true
@@ -71,7 +71,6 @@ RUN mkdir -p /app/data/upload /app/data/failed
 # Copy only the application code (this changes most frequently)
 # This way, code changes don't invalidate the expensive dependency layers above
 COPY --chown=tumblr:tumblr app/ ./app/
-COPY --chown=tumblr:tumblr requirements.txt .
 
 # Create entrypoint script to handle permissions
 COPY <<EOF /entrypoint.sh
