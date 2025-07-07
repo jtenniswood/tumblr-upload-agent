@@ -72,6 +72,20 @@ class ImageAnalysisConfig(BaseSettings):
         return value.lower() in ('true', '1', 'yes', 'on')
 
 
+class NotificationConfig(BaseSettings):
+    """Notification configuration for alerts"""
+    model_config = SettingsConfigDict(extra="ignore")
+    
+    pushover_user_key: str = Field("", env="PUSHOVER_USER_KEY")
+    pushover_api_token: str = Field("", env="PUSHOVER_API_TOKEN")
+    enable_notifications: bool = Field(True, env="ENABLE_NOTIFICATIONS")
+    
+    @property
+    def is_pushover_configured(self) -> bool:
+        """Check if PushOver is properly configured"""
+        return bool(self.pushover_user_key and self.pushover_api_token)
+
+
 class FileWatcherConfig(BaseSettings):
     """File watcher configuration"""
     model_config = SettingsConfigDict(extra="ignore")
@@ -202,6 +216,7 @@ class SystemConfig:
         self.rate_limit = RateLimitConfig()
         self.monitoring = MonitoringConfig()
         self.orchestrator = OrchestratorConfig()
+        self.notifications = NotificationConfig()
 
     def get_category_paths(self) -> Dict[str, Path]:
         """Get mapping of category names to their folder paths"""
