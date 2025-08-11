@@ -12,7 +12,7 @@ aiohttp==3.9.3
 # File System and Async I/O
 watchdog==4.0.0
 aiofiles==23.2.1
-asyncio-mqtt==0.16.1
+asyncio-mqtt==0.16.2
 
 # AI and Image Processing
 google-generativeai==0.3.2
