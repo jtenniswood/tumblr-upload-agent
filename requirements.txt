@@ -1,5 +1,5 @@
 # Core Framework
-pydantic==2.11.7
+pydantic==2.11.9
 pydantic-settings==2.10.1
 fastapi==0.116.1
 uvicorn[standard]==0.35.0
