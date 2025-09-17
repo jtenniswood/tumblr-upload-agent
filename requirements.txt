@@ -21,7 +21,7 @@ pillow-avif-plugin==1.5.2
 
 # Monitoring and Logging
 structlog==25.4.0
-psutil==7.0.0
+psutil==7.1.0
 
 # Web Features
 python-multipart==0.0.20
