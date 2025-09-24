@@ -1,7 +1,7 @@
 # Core Framework
 pydantic==2.11.7
 pydantic-settings==2.10.1
-fastapi==0.116.1
+fastapi==0.117.1
 uvicorn[standard]==0.37.0
 
 # HTTP and OAuth
