@@ -54,7 +54,7 @@ class ImageAnalysisConfig(BaseSettings):
     model_config = SettingsConfigDict(extra="ignore")
     
     gemini_api_key: str = Field("", env="GEMINI_API_KEY")
-    gemini_model: str = Field("gemini-1.5-flash", env="GEMINI_MODEL")
+    gemini_model: str = Field("gemini-1.5-flash-8b", env="GEMINI_MODEL")
     description_append_text: str = Field("", env="DESCRIPTION_APPEND_TEXT")
     gemini_prompt: str = Field(
         "Describe this image in 1-2 concise sentences. "
