@@ -1,5 +1,5 @@
 # Multi-stage build for Tumblr Upload Agent System
-FROM python:3.13-alpine as builder
+FROM python:3.14-alpine as builder
 
 # Add container labels for GitHub Container Registry
 LABEL org.opencontainers.image.source="https://github.com/jtenniswood/tumblr-upload-agent"
@@ -42,7 +42,7 @@ RUN pip install --upgrade pip setuptools wheel && \
 RUN apk del .build-deps
 
 # Production stage
-FROM python:3.13-alpine as production
+FROM python:3.14-alpine as production
 
 # Set environment variables (rarely changes)
 ENV PYTHONDONTWRITEBYTECODE=1 \
