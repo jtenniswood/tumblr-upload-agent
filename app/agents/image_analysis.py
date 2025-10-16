@@ -8,7 +8,6 @@ from app.agents.base import BaseAgent
 from app.models.config import ImageAnalysisConfig
 from app.models.events import ImageAnalysis
 from app.monitoring.tracing import trace_operation
-from app.monitoring.notifications import get_notification_service
 
 
 class ImageAnalysisAgent(BaseAgent):
@@ -18,14 +17,12 @@ class ImageAnalysisAgent(BaseAgent):
     config: ImageAnalysisConfig = Field(...)
     gemini_model: Optional[Any] = None
     _api_key_invalid: bool = False
-    _notification_service: Optional[Any] = None
     
     class Config:
         arbitrary_types_allowed = True
     
     def __init__(self, **data):
         super().__init__(**data)
-        self._notification_service = get_notification_service()
         self._setup_gemini()
     
     def _setup_gemini(self):
@@ -91,8 +88,8 @@ class ImageAnalysisAgent(BaseAgent):
                 self.logger.error("gemini_api_key_invalid", 
                                 error="API key is invalid or expired")
                 
-                # Send alert via PushOver
-                await self._send_api_key_alert(error_msg)
+                # Log the API key error
+                self.logger.error("gemini_api_key_invalid", error=error_msg)
                 return False
             
             # Other errors might be temporary
@@ -115,15 +112,6 @@ class ImageAnalysisAgent(BaseAgent):
         error_lower = error_msg.lower()
         return any(indicator.lower() in error_lower for indicator in api_key_error_indicators)
     
-    async def _send_api_key_alert(self, error_details: str):
-        """Send alert for invalid API key"""
-        try:
-            await self._notification_service.send_gemini_api_error_alert(error_details)
-            self.logger.info("api_key_alert_sent", error_details=error_details)
-        except Exception as e:
-            self.logger.error("failed_to_send_api_key_alert", 
-                            error=str(e), 
-                            original_error=error_details)
     
     async def analyze_image(self, file_path: Path) -> ImageAnalysis:
         """Analyze an image and return description"""
@@ -219,8 +207,8 @@ class ImageAnalysisAgent(BaseAgent):
                     self.logger.error("gemini_api_key_invalid_during_analysis",
                                     error="API key became invalid during analysis")
                     
-                    # Send alert
-                    await self._send_api_key_alert(error_msg)
+                    # Log the API key error
+                    self.logger.error("gemini_api_key_invalid_during_analysis", error=error_msg)
                     
                     return ImageAnalysis(
                         file_path=file_path,

@@ -54,7 +54,7 @@ class ImageAnalysisConfig(BaseSettings):
     model_config = SettingsConfigDict(extra="ignore")
     
     gemini_api_key: str = Field("", env="GEMINI_API_KEY")
-    gemini_model: str = Field("gemini-1.5-flash-8b", env="GEMINI_MODEL")
+    gemini_model: str = Field("gemini-2.0-flash-lite", env="GEMINI_MODEL")
     description_append_text: str = Field("", env="DESCRIPTION_APPEND_TEXT")
     gemini_prompt: str = Field(
         "Describe this image in 1-2 concise sentences. "
@@ -76,14 +76,7 @@ class NotificationConfig(BaseSettings):
     """Notification configuration for alerts"""
     model_config = SettingsConfigDict(extra="ignore")
     
-    pushover_user_key: str = Field("", env="PUSHOVER_USER_KEY")
-    pushover_api_token: str = Field("", env="PUSHOVER_API_TOKEN")
-    enable_notifications: bool = Field(True, env="ENABLE_NOTIFICATIONS")
-    
-    @property
-    def is_pushover_configured(self) -> bool:
-        """Check if PushOver is properly configured"""
-        return bool(self.pushover_user_key and self.pushover_api_token)
+    enable_notifications: bool = Field(False, env="ENABLE_NOTIFICATIONS")
 
 
 class FileWatcherConfig(BaseSettings):
@@ -187,7 +180,6 @@ class MonitoringConfig(BaseSettings):
     """Monitoring configuration"""
     model_config = SettingsConfigDict(extra="ignore")
     
-    dashboard_port: int = Field(8080, env="DASHBOARD_PORT")
     log_level: str = Field("INFO", env="LOG_LEVEL")
     enable_tracing: bool = Field(True, env="ENABLE_TRACING")
     health_check_interval: float = Field(30.0, env="HEALTH_CHECK_INTERVAL")
