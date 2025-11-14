@@ -60,7 +60,7 @@ class ImageAnalysisConfig(BaseSettings):
         "Describe this image in 1-2 concise sentences. "
         "Focus on the visual elements and describe what is in the image, "
         "not any text it contains. Keep it brief and clear. "
-        "Do not state Here is a description of the image.",
+        "Do not state 'Here is a description of the image'. Do not start with 'The image showcases'. Simply describe the images content.",
         env="GEMINI_PROMPT"
     )
 
