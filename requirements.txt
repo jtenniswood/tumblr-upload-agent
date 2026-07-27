@@ -18,5 +18,5 @@ google-generativeai==0.8.6
 Pillow==12.3.0
 
 # Monitoring and Logging
-structlog==25.5.0
+structlog==26.1.0
 psutil==7.2.2
